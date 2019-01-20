@@ -1,11 +1,16 @@
 const User = require('../../models/User')
 const UserSession = require('../../models/UserSession')
+const Songs = require('../../models/Songs')
+const cloudinary = require('cloudinary')
+require('../../handlers/cloudinary')
 const multer = require('multer')
 const uuidv4 = require('uuid/v4')
 const path = require('path')
 const bodyParser = require('body-parser');
 
 module.exports = (app) => {
+
+  let fileName='';
 
   const storage = multer.diskStorage({
         destination: (req, file, cb) => {
@@ -24,6 +29,8 @@ module.exports = (app) => {
             to save the file on the server and will be available as
             req.file.pathname in the router handler.
           */
+          fileName = file.originalname;
+          console.log("1 - File name is: "+file.originalname);
           const newFilename = `${uuidv4()}${path.extname(file.originalname)}`;
           console.log("File name is: "+newFilename);
           cb(null, newFilename);
@@ -184,6 +191,7 @@ module.exports = (app) => {
         });
 
 });
+
 /*
  * Verify
  */
@@ -249,30 +257,63 @@ app.get('/api/account/logout', (req, res, next) => {
   /*
    * Upload to server
    */
-/*app.post('/api/upload', function (req, res, next) {
-      upload(req, res, function(err){
-          if(err){
-            return res.send({
-            success: false,
-            message: 'Something Went Wrong!'
-          });
-          return res.send({
-            success: true,
-            message: 'Successful: File uploaded.'
-          });
-
-          }
-      });
-  });*/
-
-  app.post('/api/upload', upload.single('selectedFile'), (req, res) => {
+app.post('/api/upload', upload.single('selectedFile'), async (req, res) => {
   /*
     We now have a new req.file object here. At this point the file has been saved
     and the req.file.filename value will be the name returned by the
     filename() function defined in the diskStorage configuration. Other form fields
     are available here in req.body.
   */
-  res.send();
+  console.log("The path is : "+req.file.path);
+  const result = await cloudinary.v2.uploader.upload(req.file.path,{resource_type: "auto"});
+  console.log("URL returned is : "+result.secure_url);
+
+  let url = result.secure_url;
+  let fields = fileName.split(' - ');
+  let title = fields[0];
+  let artists = fields[1];
+  let cover = "http://res.cloudinary.com/dolxswfpc/image/upload/v1542682665/annonymous.png";
+  console.log("2 - File name is: "+fileName);
+  console.log("3 - Title is: "+title);
+  console.log("4 - Artist is: "+artists);
+
+  const newSong = new Songs();
+  newSong.url = url;
+  newSong.cover = cover;
+  newSong.title = title;
+  newSong.artist = artists;
+  await newSong.save();
+
+  return res.send({
+    success: true,
+    message: 'Success: Song saved in DB.',
+    url: url,
+    cover: cover,
+    title: title,
+    artist: artists
+  });
+
 });
+
+/*
+ * Get the list of songs already in db
+ */
+ app.get('/api/account/getlist', (req, res, next) => {
+   let count = 0;
+   Songs.find({}, function(err, songs) {
+     var songList = [];
+     songs.forEach(function(song) {
+       songList[count] = song;
+       count++;
+      });
+  console.log("This is the result : "+songList);
+  return res.send({
+    success: true,
+    message: 'Success: results fetched',
+    songList: songList
+  });
+});
+
+ });
 
 };

@@ -217,7 +217,7 @@ class MusicPlayer extends Component {
 
           <div className="browse">
             <label className="Player__Button mr-20">
-              Browse <input type="file" name="file" onChange={(e) => this.props.onUpload(e)} hidden accept=".mp3"/>
+              Browse <input type="file" name="selectedFile" onChange={(e) => this.props.onUpload(e)} hidden accept=".mp3"/>
             </label>
           </div>
 
